@@ -1,30 +1,32 @@
 ## httplog
 
-[![Gem Version](https://badge.fury.io/rb/httplog.png)](http://badge.fury.io/rb/httplog) [![Build Status](https://travis-ci.org/trusche/httplog.svg?branch=master)](https://travis-ci.org/trusche/httplog) [![Code Climate](https://codeclimate.com/github/trusche/httplog.png)](https://codeclimate.com/github/trusche/httplog)
+[![Gem Version](https://badge.fury.io/rb/httplog.svg)](http://badge.fury.io/rb/httplog) [![Build Status](https://travis-ci.org/trusche/httplog.svg?branch=master)](https://travis-ci.org/trusche/httplog) [![Code Climate](https://codeclimate.com/github/trusche/httplog.svg)](https://codeclimate.com/github/trusche/httplog)
+[![Release Version](https://img.shields.io/github/release/trusche/httplog.svg)](https://img.shields.io/github/release/trusche/httplog.svg)
 
-Log outgoing HTTP requests made from your application. Helps with debugging pesky API error responses, or just generally understanding what's going on under the hood. 
+Log outgoing HTTP requests made from your application. Helps with debugging pesky API error responses, or just generally understanding what's going on under the hood.
 
-So far this gem works with the following ruby modules and libraries:
+Requires ruby >= 2.4.
+
+This gem works with the following ruby modules and libraries:
 
 * [Net::HTTP](http://www.ruby-doc.org/stdlib-1.9.3/libdoc/net/http/rdoc/index.html)
-* [Ethon](https://github.com/typhoeus/ethon) (**Needs work to support latest versions**)
-* [Excon](https://github.com/geemus/excon) (for excon >= v18.0, httplog >= 0.2.4 is required)
+* [Ethon](https://github.com/typhoeus/ethon)
+* [Excon](https://github.com/geemus/excon)
 * [OpenURI](http://www.ruby-doc.org/stdlib-1.9.3/libdoc/open-uri/rdoc/index.html)
 * [Patron](https://github.com/toland/patron)
 * [HTTPClient](https://github.com/nahi/httpclient)
 * [HTTParty](https://github.com/jnunemaker/httparty)
 * [HTTP](https://github.com/httprb/http)
 
-These libraries are at least partially supported, where they use one of the above as adapters:
+These libraries are at least partially supported, where they use one of the above as adapters, but not explicitly tested - YMMV:
 
 * [Faraday](https://github.com/technoweenie/faraday)
-* [Typhoeus](https://github.com/typhoeus/typhoeus) (**Needs work to support latest versions**)
+* [Typhoeus](https://github.com/typhoeus/typhoeus)
 
-In theory, it should also work with any library built on top of these. But since
-the difference between theory and practice is bigger in practice than in theory, YMMV.
+In theory, it should also work with any library built on top of these. But the difference between theory and practice is bigger in practice than in theory.
 
 This is very much a development and debugging tool; it is **not recommended** to
-use this in a production environment as it is moneky-patching the respective HTTP implementations. 
+use this in a production environment as it is monkey-patching the respective HTTP implementations.
 You have been warned - use at your own risk.
 
 ### Installation
@@ -35,58 +37,131 @@ You have been warned - use at your own risk.
 
     require 'httplog' # require this *after* your HTTP gem of choice
 
-By default, this will log all outgoing HTTP requests and their responses to $stdout on DEBUG level. 
+By default, this will log all outgoing HTTP requests and their responses to $stdout on DEBUG level.
 
 ### Notes on content types
 
-* Binary data from response bodies (as indicated by the `Content-Type` header)is not logged. 
+* Binary data from response bodies (as indicated by the `Content-Type` header)is not logged.
 * Text data (`text/*` and most `application/*` types) is encoded as UTF-8, with invalid characters replaced. If you need to inspect raw non-UTF data exactly as sent over the wire, this tool is probably not for you.
 
 ### Configuration
 
 You can override the following default options:
 
-    HttpLog.options[:logger]        = Logger.new($stdout)
-    HttpLog.options[:severity]      = Logger::Severity::DEBUG
-    HttpLog.options[:log_connect]   = true
-    HttpLog.options[:log_request]   = true
-    HttpLog.options[:log_headers]   = false
-    HttpLog.options[:log_data]      = true
-    HttpLog.options[:log_status]    = true
-    HttpLog.options[:log_response]  = true
-    HttpLog.options[:log_benchmark] = true
-    HttpLog.options[:compact_log]   = false # setting this to true will make 
-    all "log_*" options redundant
-    HttpLog.options[:color]         = false # (see below)
-	# only log requests made to specified hosts (URLs)
-    HttpLog.options[:url_whitelist_pattern] = /.*/
-    # overrides whitelist
-    HttpLog.options[:url_blacklist_pattern] = nil
+```ruby
+HttpLog.configure do |config|
 
-So if you want to use this in a Rails app:
+  # Enable or disable all logging
+  config.enabled = true
 
-    # config/initializers/httplog.rb
-    HttpLog.options[:logger] = Rails.logger
+  # You can assign a different logger or method to call on that logger
+  config.logger = Logger.new($stdout)
+  config.logger_method = :log
 
-You can colorize the output to make it stand out in your logfile:
+  # I really wouldn't change this...
+  config.severity = Logger::Severity::DEBUG
 
-    HttpLog.options[:color] = {color: :black, background: :light_red}    
+  # Tweak which parts of the HTTP cycle to log...
+  config.log_connect   = true
+  config.log_request   = true
+  config.log_headers   = false
+  config.log_data      = true
+  config.log_status    = true
+  config.log_response  = true
+  config.log_benchmark = true
 
-For more color options see [colorize documentation](https://github.com/fazibear/colorize/blob/master/README.md)
+  # ...or log all request as a single line by setting this to `true`
+  config.compact_log = false
+
+  # You can also log in JSON format
+  config.json_log = false
+
+  # Prettify the output - see below
+  config.color = false
+
+  # Limit logging based on URL patterns
+  config.url_whitelist_pattern = nil
+  config.url_blacklist_pattern = nil
+
+  # Mask the values of sensitive requestparameters
+  config.filter_parameters = %w[password]
+end
+```
+
+If you want to use this in a Rails app, I'd suggest configuring this specifically for each environment. A global initializer is not a good idea since `HttpLog` will be undefined in production. Because you're **not using this in production**, right? :)
+
+```ruby
+# config/environments/development.rb
+
+HttpLog.configure do |config|
+  config.logger = Rails.logger
+end
+```
+
+If you're running a (hopefully patched) legacy Rails 3 app, you may need to set
+`config.logger_method = :add` due to its somewhat unusual logger.
+
+You can colorize the output to make it stand out in your logfile, either with a single color
+for the text:
+
+```ruby
+HttpLog.configure do |config|
+  config.color = :red
+end
+```
+
+Or with a color hash for text and background:
+
+```ruby
+HttpLog.configure do |config|
+  config.color = {color: :black, background: :yellow}
+end
+```
+
+For more color options please refer to the [rainbow documentation](https://github.com/sickill/rainbow)
 
 ### Compact logging
 
 If the log is too noisy for you, but you don't want to completely disable it either, set the `compact_log` option to `true`. This will log each request in a single line with method, request URI, response status and time, but no data or headers. No need to disable any other options individually.
 
+### JSON logging
+
+If you want to log HTTP requests in a JSON format, set the `json_log` option to `true`. You can combine this with `compact_log` to only log the basic request metrics without headers and bodies.
+
+### Parameter filtering
+
+Just like in Rails, you can filter the values of sensitive parameters by setting the `filter_parameters` to an array of (lower case) keys. The value for "password" is filtered by default.
+
+**Please note** that this will **only filter the request data** with well-formed parameters (in the URL, the headers, and the request data) but **not the response**. It does not currently filter JSON request data either, just standard "key=value" pairs in the request body.
+
 ### Example
 
 With the default configuration, the log output might look like this:
 
-    D, [2012-11-21T15:09:03.532970 #6857] DEBUG -- : [httplog] Connecting: localhost:80
-    D, [2012-11-21T15:09:03.533877 #6857] DEBUG -- : [httplog] Sending: GET http://localhost:9292/index.html
-    D, [2012-11-21T15:09:03.534499 #6857] DEBUG -- : [httplog] Status: 200
-    D, [2012-11-21T15:09:03.534544 #6857] DEBUG -- : [httplog] Benchmark: 0.00057 seconds
-    D, [2012-11-21T15:09:03.534578 #6857] DEBUG -- : [httplog] Response:
+    [httplog] Connecting: localhost:80
+    [httplog] Sending: GET http://localhost:9292/index.html
+    [httplog] Status: 200
+    [httplog] Benchmark: 0.00057 seconds
+    [httplog] Response:
+    <html>
+      <head>
+        <title>Test Page</title>
+      </head>
+      <body>
+        <h1>This is the test page.</h1>
+      </body>
+    </html>
+
+With `log_headers = true` and a parameter 'password' in the request query and headers:
+
+
+    [httplog] Connecting: localhost:80
+    [httplog] Sending: GET http://localhost:9292/index.html?password=[FILTERED]
+    [httplog] Header: accept: *.*
+    [httplog] Header: password=[FILTERED]
+    [httplog] Status: 200
+    [httplog] Benchmark: 0.00057 seconds
+    [httplog] Response:
     <html>
       <head>
         <title>Test Page</title>
@@ -100,7 +175,18 @@ With `compact_log` enabled, the same request might look like this:
 
     [httplog] GET http://localhost:9292/index.html completed with status code 200 in 0.00057 seconds
 
+With `json_log` enabled:
+
+    [httplog] {"method":"GET","url":"localhost:80","request_body":null, "request_headers":{"foo":"bar"}, "response_code":200,"response_body":"<html>\n      <head>\n        <title>Test Page</title>\n      </head>\n      <body>\n        <h1>This is the test page.</h1>\n      </body>\n    </html>","response_headers":{"foo":"bar"},"benchmark":0.00057}
+
+And with `json_log` *and* `compact_log` enabled:
+
+    [httplog] {"method":"GET","url":"localhost:80","response_code":200,"benchmark":0.00057}
+
 ### Known Issues
+
+Following are some known quirks and issues with particular libraries. If you know a workaround or have
+a suggestion for a fix, please open an issue or, even better, submit a pull request!
 
 * Requests types other than GET and POST have not been explicitly tested.
   They may or may not be logged, depending on the implementation details of the underlying library.
@@ -109,21 +195,21 @@ With `compact_log` enabled, the same request might look like this:
 * When using OpenURI, the reading of the HTTP response body is deferred,
   so it is not available for logging. This will be noted in the logging statement:
 
-        D, [2012-11-21T15:09:03.547005 #6857] DEBUG -- : [httplog] Connecting: localhost:80
-        D, [2012-11-21T15:09:03.547938 #6857] DEBUG -- : [httplog] Sending: GET http://localhost:9292/index.html
-        D, [2012-11-21T15:09:03.548615 #6857] DEBUG -- : [httplog] Status: 200
-        D, [2012-11-21T15:09:03.548662 #6857] DEBUG -- : [httplog] Benchmark: 0.000617 seconds
-        D, [2012-11-21T15:09:03.548695 #6857] DEBUG -- : [httplog] Response: (not available yet)
+        [httplog] Connecting: localhost:80
+        [httplog] Sending: GET http://localhost:9292/index.html
+        [httplog] Status: 200
+        [httplog] Benchmark: 0.000617 seconds
+        [httplog] Response: (not available yet)
 
 *  When using HTTPClient, the TCP connection establishment will be logged
    *after* the HTTP request and headers, due to the way HTTPClient is organized.
 
-        D, [2012-11-22T18:39:46.031698 #12800] DEBUG -- : [httplog] Sending: GET http://localhost:9292/index.html
-        D, [2012-11-22T18:39:46.031756 #12800] DEBUG -- : [httplog] Header: accept: */*
-        D, [2012-11-22T18:39:46.031788 #12800] DEBUG -- : [httplog] Header: foo: bar
-        D, [2012-11-22T18:39:46.031942 #12800] DEBUG -- : [httplog] Connecting: localhost:9292
-        D, [2012-11-22T18:39:46.033409 #12800] DEBUG -- : [httplog] Status: 200
-        D, [2012-11-22T18:39:46.033483 #12800] DEBUG -- : [httplog] Benchmark: 0.001562 seconds
+        [httplog] Sending: GET http://localhost:9292/index.html
+        [httplog] Header: accept: */*
+        [httplog] Header: foo: bar
+        [httplog] Connecting: localhost:9292
+        [httplog] Status: 200
+        [httplog] Benchmark: 0.001562 seconds
 
 * Also when using HTTPClient, make sure you include `httplog` **after** `httpclient` in your `Gemfile`.
 
@@ -131,6 +217,9 @@ With `compact_log` enabled, the same request might look like this:
   the TCP connection is not logged (since it's established by libcurl).
 
 * Benchmarking only covers the time between starting the HTTP request and receiving the response. It does *not* cover the time it takes to establish the TCP connection.
+
+* When using [REST Client](https://github.com/rest-client/rest-client), POST requests might be missing the requests
+  data. See #54 for details.
 
 ### Running the specs
 
@@ -140,11 +229,9 @@ This will launch a simple rack server on port 9292 and run all tests locally aga
 
 ### Contributing
 
-If you have any issues with httplog,
-or feature requests,
-please [add an issue](https://github.com/trusche/httplog/issues) on GitHub
-or fork the project and send a pull request.
-Please include passing specs with all pull requests.
+If you have any issues with or feature requests for httplog,
+please [open an issue](https://github.com/trusche/httplog/issues) on GitHub
+or fork the project and send a pull request. **Please include passing specs with all pull requests.**
 
 ### Contributors
 
@@ -158,3 +245,6 @@ Thanks to these fine folks for contributing pull requests:
 * [Chris Keele](https://github.com/christhekeele)
 * [Ryan Souza](https://github.com/ryansouza)
 * [Ilya Bondarenko](https://github.com/sedx)
+* [Kostas Zacharakis](https://github.com/kzacharakis)
+* [Yuri Smirnov](https://github.com/tycooon)
+* [Manuel Bustillo Alonso](https://github.com/bustikiller)

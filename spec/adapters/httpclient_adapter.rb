@@ -1,6 +1,12 @@
+# frozen_string_literal: true
+
 class HTTPClientAdapter < HTTPBaseAdapter
   def send_get_request
-    ::HTTPClient.get(parse_uri, header: @headers)
+    ::HTTPClient.get(parse_uri(true), header: @headers)
+  end
+
+  def send_head_request
+    ::HTTPClient.head(parse_uri, header: @headers)
   end
 
   def send_post_request
@@ -17,5 +23,9 @@ class HTTPClientAdapter < HTTPBaseAdapter
 
   def self.response_should_be
     HTTP::Message
+  end
+
+  def logs_form_data?
+    false
   end
 end

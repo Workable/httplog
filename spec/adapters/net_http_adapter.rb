@@ -1,14 +1,21 @@
+# frozen_string_literal: true
+
 class NetHTTPAdapter < HTTPBaseAdapter
   def send_get_request
-    Net::HTTP.get_response(@host, [@path, @data].compact.join('?'), @port)
+    path = @path
+    path = [@path, URI::encode(@data)].join('?') if @data
+    Net::HTTP.get_response(@host, path, @port)
+  end
+
+  def send_head_request
+    Net::HTTP.new(@host, @port).head(@path, @headers)
   end
 
   def send_post_request
-    http = Net::HTTP.new(@host, @port)
-    resp = http.post(@path, @data)
+    Net::HTTP.new(@host, @port).post(@path, @data)
   end
 
   def send_post_form_request
-    res = Net::HTTP.post_form(parse_uri, @params)
+    Net::HTTP.post_form(parse_uri, @params)
   end
 end

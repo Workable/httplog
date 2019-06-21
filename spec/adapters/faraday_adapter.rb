@@ -1,7 +1,16 @@
+# frozen_string_literal: true
+
 require 'faraday'
 class FaradayAdapter < HTTPBaseAdapter
   def send_get_request
     connection.get do |req|
+      req.url parse_uri(true).to_s
+      req.headers = @headers
+    end
+  end
+
+  def send_head_request
+    connection.head do |req|
       req.url parse_uri.to_s
       req.headers = @headers
     end
@@ -33,6 +42,10 @@ class FaradayAdapter < HTTPBaseAdapter
     end
   end
 
+  def logs_form_data?
+    false
+  end
+
   private
 
   def connection
@@ -40,7 +53,7 @@ class FaradayAdapter < HTTPBaseAdapter
       faraday.request :multipart
       faraday.request :url_encoded
 
-      faraday.adapter  Faraday.default_adapter  # make requests with Net::HTTP
+      faraday.adapter Faraday.default_adapter # make requests with Net::HTTP
     end
   end
 end

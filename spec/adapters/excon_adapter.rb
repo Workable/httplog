@@ -1,7 +1,13 @@
+# frozen_string_literal: true
+
 require 'excon'
 class ExconAdapter < HTTPBaseAdapter
   def send_get_request
-    Excon.get(parse_uri.to_s, headers: @headers )
+    Excon.get(parse_uri(true).to_s, headers: @headers)
+  end
+
+  def send_head_request
+    Excon.head(parse_uri.to_s, headers: @headers)
   end
 
   def send_post_request

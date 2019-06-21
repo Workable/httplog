@@ -1,8 +1,13 @@
+# frozen_string_literal: true
+
 require 'excon'
 class TyphoeusAdapter < HTTPBaseAdapter
-
   def send_get_request
-    Typhoeus.get(parse_uri.to_s, headers: @headers)
+    Typhoeus.get(parse_uri(true).to_s, headers: @headers)
+  end
+
+  def send_head_request
+    Typhoeus.head(parse_uri.to_s, headers: @headers)
   end
 
   def send_post_request

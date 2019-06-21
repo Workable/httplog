@@ -1,7 +1,13 @@
+# frozen_string_literal: true
+
 require 'http'
 class HTTPAdapter < HTTPBaseAdapter
   def send_get_request
-    client.get(parse_uri.to_s)
+    client.get(parse_uri(true).to_s)
+  end
+
+  def send_head_request
+    client.head(parse_uri.to_s)
   end
 
   def send_post_request

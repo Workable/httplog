@@ -1,4 +1,7 @@
 # frozen_string_literal: true
 
 source 'https://rubygems.org'
-gemspec
+
+gem 'http', '~> 5.0.0.pre'
+
+gemspec path: '..'
