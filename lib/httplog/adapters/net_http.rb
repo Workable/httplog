@@ -43,9 +43,7 @@ module Net
     end
 
     def log_body_stream(body_stream)
-      if body_stream.nil?
-        return nil
-      else
+      if body_stream && body_stream.instance_variable_get('@stream').present?
         body_stream.instance_variable_get('@stream').seek(0)
         body_stream.to_s
       end
